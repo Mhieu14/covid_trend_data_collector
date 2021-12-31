@@ -1,0 +1,1 @@
+module.exports = ['cases of covid19', 'corona', 'coronavirus', 'coronavirus cases', 'coronavirus covid19', 'coronavirus news', 'coronavirus update', 'covid', 'covid 19', 'covid 19 cases', 'covid19', 'covid19 cases', 'coronavirus symptoms']
