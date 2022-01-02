@@ -60,7 +60,7 @@ const requestByCountry = async (countryCode) => {
         })
 
         const listRes = await Promise.all(listReq)
-        await delay(1000)
+        // await delay(1000)
 
         _.forEach(listRes, itemRes => {
             const objRes = JSON.parse(itemRes)
@@ -96,13 +96,14 @@ const delay = millis => new Promise((resolve, reject) => {
   });
 
 const getDataGlobal = async () => {
-    const listChecked = ['VN', 'US', 'AF', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ']
+    const listChecked = ['VN', 'US', 'AF', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR', 'AM', 'AW', 'AU', 'AT', 'AZ', 'BS', 'IS', 'GB', 'SG', 'BH', 
+    'BB', 'BD', 'BY']
     for(let i = 0; i < countries.length; i++) {
         const item = countries[i]
         const code2 = item.Code_2;
         if (!_.includes(listChecked, code2)) {
-            await requestByCountry(code2)
-            await delay(20000)
+            requestByCountry(code2)
+            // delay(20000)
         }
     }
 }
