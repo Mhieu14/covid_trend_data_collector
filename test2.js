@@ -95,7 +95,7 @@ const requestByCountry = async (countryCode) => {
     const listChunks = _.chunk(listDataQueue, 1000);
     for(let countChuckModel = 0; countChuckModel < listChunks.length; countChuckModel++) {
         // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
-        await TrendModel.insertMany(item);
+        await TrendModel.insertMany(listChunks[countChuckModel]);
     }
     await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 1})
 }
