@@ -5,6 +5,18 @@ const listKeywords = require('./keywords')
 
 const QUEUE = require('./queues/create.queue');
 
+const dotenv = require('dotenv');
+const { join } = require('path');
+const mongoose = require('mongoose')
+const { connectMongo } = require('./dbconnect')
+const CountryModel = require('./country.model')
+const TrendModel = require('./datatrend.model')
+
+dotenv.config({
+    path: join(__dirname, '.env'),
+});
+mongoose.set('debug', true);
+
 const listYear = [2020, 2021]
 const mapCountries = new Map(_.map(countries, (item) => [item.Code_2, item]));
 
@@ -76,61 +88,35 @@ const requestByCountry = async (countryCode) => {
             })
             await delay(1000)
         }
-
-        // const listChunkReq = _.chunk(listReq, 4)
-        // for (let countReq = 0; countReq < listChunkReq.length; countReq++) {
-        //     const listReqInChunk = listChunkReq[countReq]
-        //     const listRes = await Promise.all(listReqInChunk)
-
-        //     _.forEach(listRes, itemRes => {
-        //         const objRes = JSON.parse(itemRes)
-        //         console.log('res processing ...');
-        //         const listTimelineData = _.get(objRes, 'default.timelineData')
-        //         _.forEach(listTimelineData, item => {
-        //             const dateStatistics = new Date(parseInt(item.time + '000', 10))
-        //             const listValue = item.value
-        //             for(let i = 0; i < chunkKeyWord.length; i++) {
-        //                 listDataQueue.push({
-        //                     country_code_2: thisCountry.Code_2,
-        //                     country_code_3: thisCountry.Code_3,
-        //                     date_statistic: dateStatistics,
-        //                     key_word: chunkKeyWord[i],
-        //                     value: listValue[i],
-        //                 })
-        //             }
-        //         })
-        //     })
-        //     await delay(5000)
-        // }
-        
     }
     
     
     console.log('process done model count: ', listDataQueue.length);
     const listChunks = _.chunk(listDataQueue, 1000);
-    _.forEach(listChunks, item => {
-        QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
-    })
-    
+    for(let countChuckModel = 0; countChuckModel < listChunks.length; countChuckModel++) {
+        // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
+        await TrendModel.insertMany(item);
+    }
+    await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 1})
 }
 
 const delay = millis => new Promise((resolve, reject) => {
     setTimeout(_ => resolve(), millis)
   });
 
-const getDataGlobal = async () => {
-    const listChecked = ['VN', 'US', 'AF', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR', 'AM', 'AW', 'AU', 'AT', 'AZ', 'BS', 'IS', 'GB', 'SG', 'BH', 
-    'BB', 'BD', 'BY']
-    // const thisCountries = ['IS', 'GB', '']
-    for(let i = 0; i < countries.length; i++) {
-        const item = countries[i]
-        const code2 = item.Code_2;
-        if (!_.includes(listChecked, code2)) {
-            await requestByCountry(code2)
-            await delay(1000)
-        }
-    }
+async function bootstrap() {
+    await connectMongo()
 }
 
-getDataGlobal();
+const getDataGlobal = async () => {
+    const item = await CountryModel.findOne({Crawled: 0}).lean()
+    console.log(item);
+    const code2 = item.Code_2;
+    await requestByCountry(code2)
+}
+
+// getDataGlobal();
 // testFunc()
+
+bootstrap();
+getDataGlobal();
