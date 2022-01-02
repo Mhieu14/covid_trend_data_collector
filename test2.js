@@ -109,10 +109,14 @@ async function bootstrap() {
 }
 
 const getDataGlobal = async () => {
-    const item = await CountryModel.findOne({Crawled: 0}).lean()
-    console.log(item);
-    const code2 = item.Code_2;
-    await requestByCountry(code2)
+    while (1) {
+        const item = await CountryModel.findOne({Crawled: 0}).lean()
+        if(_.isEmpty(item)) return
+        console.log(item);
+        const code2 = item.Code_2;
+        await requestByCountry(code2)
+    }
+
 }
 
 // getDataGlobal();

@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const country = Schema({
-    Name: String,
     Code_2: String,
     Code_3: String,
     Code_num: String,
