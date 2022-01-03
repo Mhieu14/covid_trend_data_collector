@@ -100,6 +100,8 @@ const requestByCountry = async (countryCode) => {
         }
     } catch (error) {
         await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 0})
+        console.log(error);
+        return null
     }
 
 }
@@ -118,7 +120,8 @@ const getDataGlobal = async () => {
         if(_.isEmpty(item)) return
         console.log(item);
         const code2 = item.Code_2;
-        await requestByCountry(code2)
+        const result = await requestByCountry(code2)
+        if(_.isEmpty(result)) return
     }
 
 }
