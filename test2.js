@@ -42,62 +42,66 @@ const testFunc = async () => {
 }
 
 const requestByCountry = async (countryCode) => {
-    const thisCountry = mapCountries.get(countryCode)
-
-    const listChunkKeyWord = _.chunk(listKeywords, 5)
-    const listDataQueue = []
-
-    for (let chunkCount = 0; chunkCount < listChunkKeyWord.length; chunkCount ++) {
-        chunkKeyWord = listChunkKeyWord[chunkCount]
-        const listParams = [];
-
-        _.forEach(listYear, year => {
-            for(let month = 0; month < 12; month++) {
-                const startTime = new Date(year, month, 1);
-                const endTime = new Date(year, month + 1, 0);
-                const param = {
-                    keyword: chunkKeyWord, 
-                    startTime: startTime,
-                    endTime: endTime,
-                    timezone: 0,
-                    geo: countryCode,
-                }
-                listParams.push(param)
-            }
-        })
-
-        // const listReq = [];
-        for(let countParam = 0; countParam <listParams.length; countParam++) {
-            const param = listParams[countParam]
-            const itemRes = await googleTrends.interestOverTime(param);
-            const objRes = JSON.parse(itemRes)
-            console.log('res processing ...');
-            const listTimelineData = _.get(objRes, 'default.timelineData')
-            _.forEach(listTimelineData, item => {
-                const dateStatistics = new Date(parseInt(item.time + '000', 10))
-                const listValue = item.value
-                for(let i = 0; i < chunkKeyWord.length; i++) {
-                    listDataQueue.push({
-                        country_code_2: thisCountry.Code_2,
-                        country_code_3: thisCountry.Code_3,
-                        date_statistic: dateStatistics,
-                        key_word: chunkKeyWord[i],
-                        value: listValue[i],
-                    })
+    try {
+        await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 1})
+        const thisCountry = mapCountries.get(countryCode)
+        const listChunkKeyWord = _.chunk(listKeywords, 5)
+        const listDataQueue = []
+    
+        for (let chunkCount = 0; chunkCount < listChunkKeyWord.length; chunkCount ++) {
+            chunkKeyWord = listChunkKeyWord[chunkCount]
+            const listParams = [];
+    
+            _.forEach(listYear, year => {
+                for(let month = 0; month < 12; month++) {
+                    const startTime = new Date(year, month, 1);
+                    const endTime = new Date(year, month + 1, 0);
+                    const param = {
+                        keyword: chunkKeyWord, 
+                        startTime: startTime,
+                        endTime: endTime,
+                        timezone: 0,
+                        geo: countryCode,
+                    }
+                    listParams.push(param)
                 }
             })
-            await delay(1000)
+    
+            // const listReq = [];
+            for(let countParam = 0; countParam <listParams.length; countParam++) {
+                const param = listParams[countParam]
+                const itemRes = await googleTrends.interestOverTime(param);
+                const objRes = JSON.parse(itemRes)
+                console.log('res processing ...');
+                const listTimelineData = _.get(objRes, 'default.timelineData')
+                _.forEach(listTimelineData, item => {
+                    const dateStatistics = new Date(parseInt(item.time + '000', 10))
+                    const listValue = item.value
+                    for(let i = 0; i < chunkKeyWord.length; i++) {
+                        listDataQueue.push({
+                            country_code_2: thisCountry.Code_2,
+                            country_code_3: thisCountry.Code_3,
+                            date_statistic: dateStatistics,
+                            key_word: chunkKeyWord[i],
+                            value: listValue[i],
+                        })
+                    }
+                })
+                await delay(1000)
+            }
         }
+        
+        
+        console.log('process done model count: ', listDataQueue.length);
+        const listChunks = _.chunk(listDataQueue, 1000);
+        for(let countChuckModel = 0; countChuckModel < listChunks.length; countChuckModel++) {
+            // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
+            await TrendModel.insertMany(listChunks[countChuckModel]);
+        }
+    } catch (error) {
+        await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 0})
     }
-    
-    
-    console.log('process done model count: ', listDataQueue.length);
-    const listChunks = _.chunk(listDataQueue, 1000);
-    for(let countChuckModel = 0; countChuckModel < listChunks.length; countChuckModel++) {
-        // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
-        await TrendModel.insertMany(listChunks[countChuckModel]);
-    }
-    await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 1})
+
 }
 
 const delay = millis => new Promise((resolve, reject) => {
