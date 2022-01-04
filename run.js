@@ -11,6 +11,7 @@ const mongoose = require('mongoose')
 const { connectMongo } = require('./dbconnect')
 const CountryModel = require('./country.model')
 const TrendModel = require('./datatrend.model')
+const CovidModel = require('./datacovid.model')
 
 dotenv.config({
     path: join(__dirname, '.env'),
@@ -19,6 +20,7 @@ mongoose.set('debug', true);
 
 const listYear = [2020, 2021]
 const mapCountries = new Map(_.map(countries, (item) => [item.Code_2, item]));
+const mapCountries3 = new Map(_.map(countries, (item) => [item.Code_3, item]));
 
 // const boottrap = async () => {
 //     for (let i = 0; i < countries.length; i++) {
@@ -98,6 +100,7 @@ const requestByCountry = async (countryCode) => {
             // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
             await TrendModel.insertMany(listChunks[countChuckModel]);
         }
+        return 1
     } catch (error) {
         await CountryModel.updateOne({Code_2: countryCode}, {Crawled: 0})
         console.log(error);
@@ -121,13 +124,71 @@ const getDataGlobal = async () => {
         console.log(item);
         const code2 = item.Code_2;
         const result = await requestByCountry(code2)
-        if(_.isEmpty(result)) return
+        if(!result) return
     }
 
 }
 
-// getDataGlobal();
-// testFunc()
+// const request = require('request')
+const fs = require('fs');
 
+const getKeys = (obj) => {
+    const keys = [];
+    for(let key in obj){
+       keys.push(key);
+    }
+    return keys;
+ }
+ 
+
+const insertDataCovid = async () => {
+    let rawdata = fs.readFileSync('owid-covid-data.json');
+    let data = JSON.parse(rawdata);
+    // console.log(getKeys(data));
+    const dataInsert = []
+    for (let key in data) {
+        const country = mapCountries3.get(key)
+        if(country) {
+            const listDate = _.get(data, `${key}.data`)
+            const code2 = country.Code_2
+            _.forEach(listDate, item => {
+                dataInsert.push({
+                    country_code_2: code2,
+                    country_code_3: key,
+                    date_statistic: new Date(item.date),
+                    total_cases: item.total_cases,
+                    new_cases: item.new_cases,
+                    total_cases_per_million: item.total_cases_per_million,
+                    new_cases_per_million: item.new_cases_per_million,
+                    stringency_index: item.stringency_index,
+                })
+            })
+        }
+        
+    }
+    const listChunks = _.chunk(dataInsert, 1000);
+    for(let countChuckModel = 0; countChuckModel < listChunks.length; countChuckModel++) {
+        // QUEUE.queueInsertMongo.add({ list_data: item }, { attempts: 1, backoff: 1000, removeOnComplete: true });
+        await CovidModel.insertMany(listChunks[countChuckModel]);
+    }
+    return 1
+}
+
+const { convertArrayToCSV } = require('convert-array-to-csv');
+
+const exportCsv = async () => {
+    const dataObjects = await TrendModel.find().lean();
+    const csvFromArrayOfObjects = convertArrayToCSV(dataObjects);
+    fs.writeFile('./data.csv', csvFromArrayOfObjects, 'utf8', function (err) {
+        if (err) {
+            console.log('Some error occured - file either not saved or corrupted file saved.');
+        } else{
+            console.log('It\'s saved!');
+        }
+    });
+}
+ 
 bootstrap();
 getDataGlobal();
+// insertDataCovid()
+// exportCsv();
